@@ -1,15 +1,23 @@
-import scholarly as sc
-from tqdm import tqdm
-import requests
+import multiprocessing as mp
 import operator
 import os
+import sys
+import traceback
 
 import numpy as np
-import multiprocessing as mp
-import sys
+
+import scholarly as sc
 
 
 def levenshtein(seq1, seq2):
+    if seq1 is None:
+        seq1 = ""
+
+    if seq2 is None:
+        seq2 = ""
+
+    seq1, se12 = str(seq1), str(seq2)
+
     size_x = len(seq1) + 1
     size_y = len(seq2) + 1
     matrix = np.zeros((size_x, size_y))
@@ -42,39 +50,35 @@ def fscrape(fname):
 
         bibs = []
         for i, pub in enumerate(auth.publications):
-            pub.fill()
-            # print(pub)
-
             try:
-                if requests.get(pub.bib.get('eprint')).status_code == 200:
-                    link = pub.bib['eprint']
-                else:
-                    link = pub.bib['url']
-            except:
-                link = pub.bib.get('url', 'https://biomedical.gsu.edu/faculty/')
+                pub.fill()
+                # print(pub)
 
-            author_names = []
-            for name in pub.bib.get('author', fname).split(' and '):
-                if levenshtein(fname, name) < 3:
-                    author_names.append(f'<b>{name}</b>')
-                else:
-                    author_names.append(name)
+                author_names = []
+                for name in pub.bib.get('author', fname).split(' and '):
+                    if levenshtein(fname, name) < 3:
+                        author_names.append(f'<b>{name}</b>')
+                    else:
+                        author_names.append(name)
 
-            journal = pub.bib.get('journal', 'Journal')
+                journal = pub.bib.get('journal', 'Journal')
 
-            if journal == 'Journal':
-                if 'patent' in link:
-                    journal = 'US Patents'
+                link = pub.bib.get('eprint', pub.bib.get('url', 'https://biomedical.gsu.edu/faculty/'))
+                if journal == 'Journal':
+                    if 'patent' in link:
+                        journal = 'US Patents'
 
-            _bibs = [', '.join(author_names),
-                     f"<a href={link}>{pub.bib.get('title', 'Link')}</a>",
-                     f'<b>{journal[0].upper() + journal[1:]}</b>',
-                     pub.bib.get('year', 'N/A'),
-                     pub.bib.get('number', 'N/A') + '(' + pub.bib.get('volume', 'N/A') + ')',  # Issue (Volume)
-                     pub.bib.get('pages', 'N/A')]
+                _bibs = [', '.join(author_names),
+                         f"<a href={link}>{pub.bib.get('title', 'Link')}</a>",
+                         f'<b>{journal[0].upper() + journal[1:]}</b>',
+                         pub.bib.get('year', 0),
+                         pub.bib.get('number', 'N/A') + '(' + pub.bib.get('volume', 'N/A') + ')',  # Issue (Volume)
+                         pub.bib.get('pages', 'N/A')]
 
-            bibs.append(_bibs)
-            print(f'{fname}: {i + 1}/{len(auth.publications)}')
+                bibs.append(_bibs)
+                print(f'{fname}: {i + 1}/{len(auth.publications)}')
+            except Exception as e:
+                traceback.print_exc()
 
         bibs.sort(key=operator.itemgetter(3), reverse=True)
 
@@ -85,8 +89,9 @@ def fscrape(fname):
                 wr.write(f'<li>{line}</li>\n')
                 wr.flush()
             wr.write('</ol>')
+
     except Exception as e:
-        print(e)
+        traceback.print_exc()
 
 
 if __name__ == "__main__":

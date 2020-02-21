@@ -41,7 +41,7 @@ def fscrape(fname):
         auth = next(qry).fill()
 
         bibs = []
-        for i, pub in enumerate(auth.publications[1:10]):
+        for i, pub in enumerate(auth.publications):
             pub.fill()
             # print(pub)
 

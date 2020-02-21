@@ -41,7 +41,7 @@ def fscrape(fname):
         auth = next(qry).fill()
 
         bibs = []
-        for i, pub in enumerate(auth.publications):
+        for i, pub in enumerate(auth.publications[1:10]):
             pub.fill()
             # print(pub)
 
@@ -61,12 +61,17 @@ def fscrape(fname):
                     author_names.append(name)
 
             journal = pub.bib.get('journal', 'Journal')
+
+            if journal == 'Journal':
+                if 'patent' in link:
+                    journal = 'US Patents'
+
             _bibs = [', '.join(author_names),
                      f"<a href={link}>{pub.bib.get('title', 'Link')}</a>",
                      f'<b>{journal[0].upper() + journal[1:]}</b>',
-                     pub.bib.get('year', 0),
-                     pub.bib.get('number', "") + '(' + pub.bib.get('volume', "") + ')',  # Issue (Volume)
-                     pub.bib.get('pages', "")]
+                     pub.bib.get('year', 'N/A'),
+                     pub.bib.get('number', 'N/A') + '(' + pub.bib.get('volume', 'N/A') + ')',  # Issue (Volume)
+                     pub.bib.get('pages', 'N/A')]
 
             bibs.append(_bibs)
             print(f'{fname}: {i + 1}/{len(auth.publications)}')
@@ -74,10 +79,12 @@ def fscrape(fname):
         bibs.sort(key=operator.itemgetter(3), reverse=True)
 
         with open(f'outputs{os.sep}{fname}.txt', 'w', encoding="utf-8") as wr:
+            wr.write('<ol>\n')
             for author, title, journal, year, num, pages in bibs:
                 line = f'{author}. {title}. {journal}. {year};{num}:{pages}.'
-                wr.write(line + '\n')
+                wr.write(f'<li>{line}</li>\n')
                 wr.flush()
+            wr.write('</ol>')
     except Exception as e:
         print(e)
 
